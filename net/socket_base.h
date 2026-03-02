@@ -4,6 +4,7 @@
 #include <type_traits>
 #include <iostream>
 
+
 namespace secmes
 {
 
@@ -27,11 +28,17 @@ public:
     ~SocketBase() = default;
 
 public:
-    void bind() requires SocketLike<SocketDerived> { static_cast<SocketDerived*>(this)->bind_impl(); }
-    void init() requires SocketLike<SocketDerived> { static_cast<SocketDerived*>(this)->init_impl(); }
-    void read() requires SocketLike<SocketDerived> { static_cast<SocketDerived*>(this)->read_impl(); }
-    void write() requires SocketLike<SocketDerived> { static_cast<SocketDerived*>(this)->write_impl(); }
-    void close() requires SocketLike<SocketDerived> { static_cast<SocketDerived*>(this)->close_impl(); }
+    void bind() requires SocketLike<SocketDerived> { derived().bind_impl(); }
+    void init() requires SocketLike<SocketDerived> { derived().init_impl(); }
+    void read() requires SocketLike<SocketDerived> { derived().read_impl(); }
+    void write() requires SocketLike<SocketDerived> { derived().write_impl(); }
+    void close() requires SocketLike<SocketDerived> { derived().close_impl(); }
+
+private:
+    SocketDerived& derived()
+    {
+        return static_cast<SocketDerived&>(*this);
+    }
 };
 
 class SocketUDP : public SocketBase<SocketUDP>
