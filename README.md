@@ -1,2 +1,2 @@
-# SecMes
+# ShadowChat
 Secure messenger
