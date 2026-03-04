@@ -35,6 +35,7 @@ struct l3_channel_traits<SocketUDP>
     static constexpr uint8_t sock_fd_not_inited = -1;
 };
 
+
 class SocketUDP : public ChannelBase<SocketUDP>
 {
 /* Aliases */
@@ -98,7 +99,7 @@ public:
         int32_t socket_ready {};
 
         std::vector<std::byte> vec {};
-        vec.resize(PACKET_SIZE);
+        vec.resize(protocol::PACKET_SIZE_BYTES);
         socket_ready = epoll_wait(epfd, events, 1, -1);
 
         if (/*1*/socket_ready > 0 && events[0].data.fd == sock_fd) {
@@ -107,7 +108,7 @@ public:
             sock_len_t len = sizeof(addr);
             ssize_t recv_bytes = recvfrom(events[0].data.fd,
                                     vec.data(),
-                                    PACKET_SIZE,
+                                    protocol::PACKET_SIZE_BYTES,
                                     0,
                                     (struct sockaddr*)&addr,
                                     &len);
@@ -122,11 +123,23 @@ public:
         return ret_val;
     }
 
-    void write_impl()
+    bool write_impl(channel_write_data_udp_t&& cfg)
     {
-        struct sockaddr_in addr {};
-        sock_len_t len = sizeof(addr);
-        // sendto(sock_fd, vec.data, vec.size(), 0, (struct sockaddr*)&addr, &len)
+        bool ret_val {true};
+        struct sockaddr_in sock_addr {};
+        sock_addr = {.sin_family = udp_socket_traits::domain_v4,
+                     .sin_port = htons(cfg.port)};
+
+        inet_aton(cfg.send2ip.c_str(), &sock_addr.sin_addr);
+        sock_fd = socket(sock_addr.sin_family,
+                        udp_socket_traits::type,
+                        udp_socket_traits::protocol);
+
+        sock_len_t len = sizeof(sock_addr);
+        if(sendto(sock_fd, cfg.data.data(), cfg.data.size(), 0, (struct sockaddr*)&sock_addr, len) < 0) {
+            ret_val = false;
+        }
+        return ret_val;
     }
 
     void close_impl()

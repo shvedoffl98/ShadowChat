@@ -16,13 +16,21 @@ namespace secmes
 
 namespace network
 {
-/* Constants */
-constexpr uint16_t PACKET_SIZE = 1200;
+
+struct channel_write_data_udp_t;
 
 /* Aliases */
 using socket_fd_t = int32_t;
 using port_type_t = uint16_t;
 using ip_from_config_t = std::string;
+
+struct channel_write_data_udp_t
+{
+    ip_from_config_t send2ip {};
+    port_type_t port {};
+    std::vector<std::byte> data {};
+};
+
 
 template <typename CHANNEL_TYPE>
 concept HasInit = requires(CHANNEL_TYPE t) {
@@ -40,8 +48,8 @@ concept HasRead = requires(CHANNEL_TYPE t) {
 };
 
 template <typename CHANNEL_TYPE>
-concept HasWrite = requires(CHANNEL_TYPE t) {
-    { t.write_impl() } -> std::same_as<void>;
+concept HasWrite = requires(CHANNEL_TYPE t, channel_write_data_udp_t&& cfg) {
+    { t.write_impl(std::move(cfg)) } -> std::same_as<bool>;
 };
 
 template <typename CHANNEL_TYPE>
@@ -60,7 +68,7 @@ public:
 public:
     bool init_base() requires ChannelLike<ChannelDerived>  { return derived().init_impl(); }
     std::optional<std::vector<std::byte>> read_base() requires ChannelLike<ChannelDerived>  { return derived().read_impl(); }
-    void write_base() requires ChannelLike<ChannelDerived> { return derived().write_impl(); }
+    bool write_base(channel_write_data_udp_t&& cfg) requires ChannelLike<ChannelDerived> { return derived().write_impl(std::move(cfg)); }
     void close_base() requires ChannelLike<ChannelDerived> { return derived().close_impl(); }
 
 private:
@@ -73,12 +81,14 @@ private:
 template <typename SocketType>
 struct l3_channel_traits;
 
+
 /* UDP/TCP,UNIX config */
 struct l3_channel_config_t
 {
     ip_from_config_t ip {};
     port_type_t port {};
 };
+
 
 /* DPDK config */
 struct l2_channel_config_t

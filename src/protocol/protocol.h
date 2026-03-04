@@ -12,6 +12,9 @@ namespace secmes
 namespace protocol
 {
 
+/* Constants */
+constexpr uint16_t PACKET_SIZE_BYTES = 1200;
+
 struct __attribute__((packed)) protocol_header_t
 {
     uint8_t magic {};
