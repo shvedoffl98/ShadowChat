@@ -9,6 +9,7 @@
 #include <fcntl.h>
 #include <sys/epoll.h>
 #include <arpa/inet.h>
+#include <cassert>
 
 #include "channel_base.h"
 
@@ -75,11 +76,7 @@ public:
             if (!_bind_impl(sock_fd, (struct sockaddr*)&sock_addr, sizeof(sock_addr))) {
                 ret_val = false;
             } else {
-                epfd = epoll_create1(0);
-                epoll_event ev {};
-                ev.events = EPOLLIN;
-                ev.data.fd = sock_fd;
-                epoll_ctl(epfd, EPOLL_CTL_ADD, sock_fd, &ev);
+                _do_modify_epoll(EPOLLIN, EPOLL_CTL_ADD);
             }
         }
         return ret_val;
@@ -87,37 +84,39 @@ public:
 
     std::optional<std::vector<std::byte>> read_impl()
     {
+        /**
+         * TODO: Make expandable to work with 1+ sockets.
+         */
+
         std::lock_guard<std::mutex> lock(r_mtx);
 
+        /* Return value */
+        std::optional<std::vector<std::byte>> ret_val {};
+
+        /* Just one socket fd */
         struct epoll_event events[1] {};
-        int32_t socket_fd_ready_count {};
+        int32_t socket_ready {};
 
         std::vector<std::byte> vec {};
-        std::optional<std::vector<std::byte>> ret_val {};
         vec.resize(PACKET_SIZE);
+        socket_ready = epoll_wait(epfd, events, 1, -1);
 
-        socket_fd_ready_count = epoll_wait(epfd, events, 1, -1);
+        if (/*1*/socket_ready > 0 && events[0].data.fd == sock_fd) {
+            struct sockaddr_in addr {};
+            memset(&addr, 0, sizeof(sockaddr_in));
+            sock_len_t len = sizeof(addr);
+            ssize_t recv_bytes = recvfrom(events[0].data.fd,
+                                    vec.data(),
+                                    PACKET_SIZE,
+                                    0,
+                                    (struct sockaddr*)&addr,
+                                    &len);
 
-        for (decltype(socket_fd_ready_count) i = 0;
-                i < socket_fd_ready_count;
-                ++i) {
-            if (events[i].data.fd == sock_fd) {
-                struct sockaddr_in addr {};
-                memset(&addr, 0, sizeof(sockaddr_in));
-                sock_len_t len = sizeof(addr);
-                ssize_t recv_bytes = recvfrom(events[i].data.fd,
-                                     vec.data(),
-                                     PACKET_SIZE,
-                                     0,
-                                     (struct sockaddr*)&addr,
-                                     &len);
-                if (recv_bytes <= 0) {
-                    vec.clear();
-                    ret_val = std::nullopt;
-                } else {
-                    vec.resize(recv_bytes);
-                    ret_val = std::move(vec);
-                }
+            if (recv_bytes <= 0) {
+                ret_val = std::nullopt;
+            } else {
+                vec.resize(recv_bytes);
+                ret_val = std::move(vec);
             }
         }
         return ret_val;
@@ -125,6 +124,9 @@ public:
 
     void write_impl()
     {
+        struct sockaddr_in addr {};
+        sock_len_t len = sizeof(addr);
+        // sendto(sock_fd, vec.data, vec.size(), 0, (struct sockaddr*)&addr, &len)
     }
 
     void close_impl()
@@ -139,6 +141,28 @@ private:
     {
         return bind(sock_fd, sock_addr, sock_len)
             != udp_socket_traits::sock_fd_not_inited;
+    }
+
+    bool _do_modify_epoll(EPOLL_EVENTS event, decltype(EPOLL_CTL_ADD) action)
+    {
+        /**
+         * TODO: Modify code to process different actions
+         */
+
+        bool ret_val {true};
+        if (epfd = epoll_create1(0); epfd < 0) {
+            ret_val = false;
+        } else {
+            epoll_event ev {};
+            ev.events = event;
+            /* debug assert */
+            assert(sock_fd > 0);
+            ev.data.fd = sock_fd;
+            if (epoll_ctl(epfd, action, sock_fd, &ev) < 0) {
+                ret_val = false;
+            }
+        }
+        return ret_val;
     }
 
 /* Owning obkects*/
