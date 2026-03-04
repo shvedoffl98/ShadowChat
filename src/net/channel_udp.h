@@ -4,7 +4,10 @@
 #include <utility>
 #include <iostream>
 #include <mutex>
+#include <cstddef>
 
+#include <fcntl.h>
+#include <sys/epoll.h>
 #include <arpa/inet.h>
 
 #include "channel_base.h"
@@ -37,11 +40,13 @@ class SocketUDP : public ChannelBase<SocketUDP>
 private:
     using udp_socket_traits = l3_channel_traits<SocketUDP>;
     using sock_len_t = uint32_t;
+    using epoll_fd_t = int32_t;
 
 /* Constructors */
 public:
     explicit SocketUDP(l3_channel_config_t&& cfg)
     : sock_fd(udp_socket_traits::sock_fd_not_inited),
+      efd {},
       config(std::move(cfg)),
       r_mtx {},
       w_mtx {}
@@ -65,8 +70,16 @@ public:
                             udp_socket_traits::type,
                             udp_socket_traits::protocol);
 
+            fcntl(sock_fd, F_SETFL, O_NONBLOCK);
+
             if (!_bind_impl(sock_fd, (struct sockaddr*)&sock_addr, sizeof(sock_addr))) {
                 ret_val = false;
+            } else {
+                efd = epoll_create1(0);
+                epoll_event ev {};
+                ev.events = EPOLLIN;
+                ev.data.fd = sock_fd;
+                epoll_ctl(efd, EPOLL_CTL_ADD, sock_fd, &ev);
             }
         }
         return ret_val;
@@ -74,16 +87,31 @@ public:
 
     void read_impl()
     {
+        std::lock_guard<std::mutex> lock(r_mtx);
+        struct epoll_event events[1];
+        int nfds;
+
+        // unsigned char buffer[1200];
+        while (1) {
+            nfds = epoll_wait(efd, events, 1, -1);
+
+            for (int i = 0; i < nfds; i++) {
+                if (events[i].data.fd == sock_fd) {
+                    // struct sockaddr_in addr;
+                    // memset(&addr, 0, sizeof(sockaddr_in));
+                    // socklen_t len = sizeof(addr);
+                    // recvfrom(sock_fd, (unsigned char*)(buffer), 1200, MSG_WAITALL, (struct sockaddr*)&addr, &len);
+                }
+            }
+        }
     }
 
     void write_impl()
     {
-
     }
 
     void close_impl()
     {
-
     }
 
 /* Private methods */
@@ -99,6 +127,7 @@ private:
 /* Owning obkects*/
 private:
     socket_fd_t sock_fd;
+    epoll_fd_t efd;
     l3_channel_config_t config;
     std::mutex r_mtx;
     std::mutex w_mtx;

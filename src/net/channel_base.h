@@ -53,10 +53,10 @@ public:
     ~ChannelBase() = default;
 
 public:
-    void init() requires ChannelLike<ChannelDerived>  { derived().init_impl(); }
-    void read() requires ChannelLike<ChannelDerived>  { derived().read_impl(); }
-    void write() requires ChannelLike<ChannelDerived> { derived().write_impl(); }
-    void close() requires ChannelLike<ChannelDerived> { derived().close_impl(); }
+    bool init_base() requires ChannelLike<ChannelDerived>  { return derived().init_impl(); }
+    void read_base() requires ChannelLike<ChannelDerived>  { return derived().read_impl(); }
+    void write_base() requires ChannelLike<ChannelDerived> { return derived().write_impl(); }
+    void close_base() requires ChannelLike<ChannelDerived> { return derived().close_impl(); }
 
 private:
     ChannelDerived& derived()
