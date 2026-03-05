@@ -10,6 +10,9 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 
+#include "../protocol/protocol_structure.h"
+
+
 class SocketUDP;
 
 

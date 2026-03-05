@@ -1,7 +1,8 @@
 #include "configuration/configuration.h"
 #include "net/channel_base.h"
-#include "protocol/protocol.h"
 #include "net/channel_udp.h"
+#include "protocol/protocol_structure.h"
+#include "protocol/tlv.h"
 
 int main(int argc, char** argv)
 {

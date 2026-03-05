@@ -21,6 +21,7 @@ namespace secmes
 namespace network
 {
 
+
 class SocketUDP : public ChannelBase<SocketUDP>
 {
 public:
