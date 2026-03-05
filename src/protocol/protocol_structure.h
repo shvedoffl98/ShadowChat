@@ -24,6 +24,7 @@ enum class message_type_e : uint8_t
 /* Constants */
 constexpr uint16_t PACKET_SIZE_BYTES = 1200;
 
+/* Protocol header */
 struct __attribute__((packed)) protocol_header_t
 {
     uint8_t magic {};
@@ -31,7 +32,7 @@ struct __attribute__((packed)) protocol_header_t
     uint8_t message_type {};
 };
 
-
+/* Message header */
 struct __attribute__((packed)) message_header_t
 {
     uint64_t session_id {};
@@ -43,8 +44,10 @@ struct __attribute__((packed)) message_header_t
 };
 
 
+/* Messages structures */
 template <message_type_e msg_type>
 struct __attribute__((packed)) message_payload_t;
+
 
 template <>
 struct __attribute__((packed)) message_payload_t<message_type_e::CLIENT_HELLO>
