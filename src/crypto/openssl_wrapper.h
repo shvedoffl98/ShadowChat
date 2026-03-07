@@ -17,6 +17,24 @@ namespace network
 namespace crypto
 {
 
+struct diffie_hellman_X25519_traits_t
+{
+    diffie_hellman_X25519_traits_t() = delete;
+    static constexpr uint8_t ret_size_b = 32;
+    using ret_pub_key_t = std::array<std::byte, ret_size_b>;
+    using ret_priv_key_t = ret_pub_key_t;
+    using ret_val_t = std::pair<ret_pub_key_t, ret_priv_key_t>;
+};
+
+struct hash_sha256_hmac_traits_t
+{
+    /* SHA256 + HMAC-SHA256 section*/
+    hash_sha256_hmac_traits_t() = delete;
+    static constexpr uint8_t ret_size_b = 32;
+    static constexpr uint8_t HMAC_SHA256_ret_size_b = ret_size_b;
+    using ret_val_t = std::array<std::byte, ret_size_b>;
+};
+
 
 class CryptoProvider
 {
@@ -26,34 +44,19 @@ class CryptoProvider
  *
  */
 public:
-    /**
-     *  Diffie Hellman algorithms return keys sizes in bytes.
-     *  NOTE: Only metadata.
-     */
-    struct dh_return_keys_size_bytes_t
+    template <typename DH_ALGO>
+    static auto get_pub_priv_keys() -> typename DH_ALGO::ret_val_t
     {
-        dh_return_keys_size_bytes_t() = delete;
-        static constexpr uint8_t X25519_ret_size_b = 32;
-    };
-
-/* Aliases */
-public:
-using df_ret_size_t = CryptoProvider::dh_return_keys_size_bytes_t;
-
-public:
-    using public_key_t = std::array<uint8_t, df_ret_size_t::X25519_ret_size_b>;
-    using private_key_t = public_key_t;
-
-public:
-    static std::pair<public_key_t, private_key_t> get_pub_priv_keys()
-    {
-        using ret_val_t = std::invoke_result_t<decltype(get_pub_priv_keys)>;
-
         /* Return value */
-        ret_val_t ret_val {};
+        typename DH_ALGO::ret_val_t ret_val {};
 
         /* Allocates public key algorithm context */
-        EVP_PKEY_CTX* ctx = EVP_PKEY_CTX_new_id(EVP_PKEY_X25519, nullptr);
+        EVP_PKEY_CTX* ctx = nullptr;
+        if constexpr (std::is_same_v<DH_ALGO, diffie_hellman_X25519_traits_t>()) {
+            ctx = EVP_PKEY_CTX_new_id(EVP_PKEY_X25519, nullptr);
+        } else {
+            // error
+        }
 
         /* Initializes the public key algorithn context for a key generation operation */
         EVP_PKEY_keygen_init(ctx);
@@ -62,12 +65,37 @@ public:
         EVP_PKEY* pkey = nullptr;
         EVP_PKEY_keygen(ctx, &pkey);
 
+        /* Get public key */
         size_t len_pub = sizeof(ret_val.first);
-        EVP_PKEY_get_raw_public_key(pkey, ret_val.first.data(), &len_pub);
+        EVP_PKEY_get_raw_public_key(pkey, reinterpret_cast<uint8_t*>(ret_val.first.data()), &len_pub);
 
+        /* Get private key */
         size_t len_priv = sizeof(ret_val.second);
-        EVP_PKEY_get_raw_public_key(pkey, ret_val.second.data(), &len_priv);
+        EVP_PKEY_get_raw_public_key(pkey, reinterpret_cast<uint8_t*>(ret_val.second.data()), &len_priv);
 
+        return ret_val;
+    }
+
+    template <typename HASH_ALGO>
+    static auto get_hash(const uint8_t* plaintext_p, size_t len) -> typename HASH_ALGO::ret_val_t
+    {
+        /* Return value */
+        typename HASH_ALGO::ret_val_t ret_val {};
+        uint32_t hash_len {};
+
+        /* Allocates public key algorithm context */
+        EVP_MD_CTX* ctx = nullptr;
+        if constexpr (std::is_same_v<HASH_ALGO, hash_sha256_hmac_traits_t>()) {
+            EVP_DigestInit_ex(ctx, EVP_sha256(), nullptr);
+        } else {
+            // error
+        }
+
+        EVP_DigestUpdate(ctx, plaintext_p, len);
+        EVP_DigestFinal_ex(ctx, ret_val.data(), &hash_len);
+
+        EVP_MD_CTX_free(ctx);
+        ret_val.resize(hash_len);
         return ret_val;
     }
 };
