@@ -1,32 +1,22 @@
 #pragma once
 
-#include "../protocol/protocol_structure.h"
-
 #include <vector>
 #include <type_traits>
 #include <arpa/inet.h>
 #include <climits>
 
+#include "../protocol/protocol_structure.h"
+#include "../utils/utils.h"
+
+
+namespace shadow
+{
+
+namespace builder
+{
 
 class MessageSerializer
 {
-public:
-    static uint64_t htonll(uint64_t num2convert)
-    {
-        static_assert(CHAR_BIT == 8);
-
-        using ret_val_t = std::invoke_result_t<decltype(htonll), uint64_t>;
-        ret_val_t ret_val {};
-
-#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
-        uint32_t high = num2convert >> 32;
-        uint32_t low = num2convert & 0xFFFFFFFF;
-        ret_val = static_cast<uint64_t>(low) << 32 | static_cast<uint64_t>(high);
-#endif
-
-        return ret_val;
-    }
-
 public:
     template <shadow::protocol::message_type_e MSG_TYPE>
     static std::vector<uint8_t> build(shadow::protocol::message_t<MSG_TYPE>&& msg)
@@ -63,15 +53,18 @@ public:
     static void _build_message_header(shadow::protocol::message_header_t&& msg_hdr,
                                       /*OUT*/ std::vector<uint8_t>& vec)
     {
-        vec.push_back(htonll(msg_hdr.session_id));
-        vec.push_back(htonll(msg_hdr.packet_number));
-        vec.push_back(htonll(msg_hdr.seq_number));
-        vec.push_back(htonll(msg_hdr.packet_count));
-        vec.push_back(htonll(msg_hdr.timestamp));
-        vec.push_back(htonll(msg_hdr.nonce));
+        vec.push_back(utils::UtilityProvider::htonll(msg_hdr.session_id));
+        vec.push_back(utils::UtilityProvider::htonll(msg_hdr.packet_number));
+        vec.push_back(utils::UtilityProvider::htonll(msg_hdr.seq_number));
+        vec.push_back(utils::UtilityProvider::htonll(msg_hdr.packet_count));
+        vec.push_back(utils::UtilityProvider::htonll(msg_hdr.timestamp));
+        vec.push_back(utils::UtilityProvider::htonll(msg_hdr.nonce));
     }
 
     template <shadow::protocol::message_type_e MSG_TYPE>
     static bool _build_payload(shadow::protocol::message_t<MSG_TYPE> msg,
                                /*OUT*/ std::vector<uint8_t>&);
 };
+
+}
+}

@@ -7,9 +7,6 @@
 #include <openssl/sha.h>
 
 
-namespace shadow
-{
-
 namespace crypto
 {
 
@@ -121,5 +118,4 @@ public:
         return ret_val;
     }
 };
-}
 }

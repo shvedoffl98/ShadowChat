@@ -58,7 +58,7 @@ struct __attribute__((packed)) message_t;
 template <>
 struct __attribute__((packed)) message_t<message_type_e::CLIENT_HELLO>
 {
-    using diffie_hellman_t = shadow::crypto::diffie_hellman_X25519_traits_t;
+    using diffie_hellman_t = crypto::diffie_hellman_X25519_traits_t;
 
     protocol_header_t prt_hdr {};
     message_header_t msg_hdr {};
@@ -69,7 +69,7 @@ struct __attribute__((packed)) message_t<message_type_e::CLIENT_HELLO>
 template <>
 struct __attribute__((packed)) message_t<message_type_e::SERVER_HELLO>
 {
-    using diffie_hellman_t = shadow::crypto::diffie_hellman_X25519_traits_t;
+    using diffie_hellman_t = crypto::diffie_hellman_X25519_traits_t;
 
     protocol_header_t prt_hdr {};
     message_header_t msg_hdr {};
@@ -80,7 +80,7 @@ struct __attribute__((packed)) message_t<message_type_e::SERVER_HELLO>
 template <>
 struct __attribute__((packed)) message_t<message_type_e::HANDSHAKE_FINISH>
 {
-    using hash_sha256_t = shadow::crypto::hash_sha256_hmac_traits_t;
+    using hash_sha256_t = crypto::hash_sha256_hmac_traits_t;
     protocol_header_t prt_hdr {};
     message_header_t msg_hdr {};
     std::array<uint8_t, hash_sha256_t::ret_size_b> hmac_tag;
